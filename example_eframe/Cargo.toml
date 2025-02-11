@@ -14,6 +14,7 @@ crate-type = ["cdylib", "rlib"]
 ehttp = { path = "../ehttp", features = ["streaming"] }
 eframe = "0.24.1"
 log = "0.4"
+sys-locale = "0.3.2"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
