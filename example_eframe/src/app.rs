@@ -1,9 +1,16 @@
 use std::{
+    error::Error,
     ops::ControlFlow,
     sync::{Arc, Mutex},
 };
 
-use eframe::egui;
+use eframe::{
+    egui::{self, Context},
+    CreationContext,
+};
+use font_kit::{family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource};
+
+pub type AppError = Box<dyn Error + Send + Sync>;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -29,16 +36,44 @@ pub struct DemoApp {
     request_body: String,
     streaming: bool,
     download: Arc<Mutex<Download>>,
+    locale: String,
+}
+impl DemoApp {
+    pub fn new(cc: &CreationContext) -> Result<Self, AppError> {
+        let ret = Self::default();
+        Self::load_font(&cc.egui_ctx)?;
+        Ok(ret)
+    }
+    fn load_font(ctx: &Context) -> Result<(), AppError> {
+        let font = SystemSource::new()
+            .select_best_match(&[FamilyName::SansSerif], &Properties::new())
+            .unwrap();
+        match font {
+            Handle::Memory { bytes, font_index }=>{
+                println!("font index: {}",font_index);
+                println!("memory");
+            }
+            Handle::Path { path, font_index }=>{
+                println!("font index: {}",font_index);
+                println!("file path: {:?}",&path);
+            }
+        }
+        Ok(())
+    }   
 }
 
 impl Default for DemoApp {
     fn default() -> Self {
+        let locale = sys_locale::get_locale()
+            .or_else(|| Some("en-US".to_string()))
+            .unwrap();
         Self {
             url: "https://raw.githubusercontent.com/emilk/ehttp/master/README.md".to_owned(),
             method: Method::Get,
             request_body: r#"["posting some json"]"#.to_owned(),
             streaming: true,
             download: Arc::new(Mutex::new(Download::None)),
+            locale,
         }
     }
 }
