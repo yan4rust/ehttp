@@ -8,7 +8,9 @@ use eframe::{
     egui::{self, Context},
     CreationContext,
 };
-use font_kit::{family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource};
+use font_kit::{
+    family_name::FamilyName, handle::Handle, properties::Properties, source::{Source, SystemSource},
+};
 
 pub type AppError = Box<dyn Error + Send + Sync>;
 
@@ -45,21 +47,33 @@ impl DemoApp {
         Ok(ret)
     }
     fn load_font(ctx: &Context) -> Result<(), AppError> {
-        let font = SystemSource::new()
+        let src = SystemSource::new();
+        // show all system font name
+        // Arial
+        // Bahnschrift
+        // Calibri
+        // Cambria
+        // 微软雅黑
+        // Microsoft YaHei UI
+        for ref name in src.all_families()? {
+            println!("{}",name);
+        }
+
+        let font = src
             .select_best_match(&[FamilyName::SansSerif], &Properties::new())
             .unwrap();
         match font {
-            Handle::Memory { bytes, font_index }=>{
-                println!("font index: {}",font_index);
+            Handle::Memory { bytes, font_index } => {
+                println!("font index: {}", font_index);
                 println!("memory");
             }
-            Handle::Path { path, font_index }=>{
-                println!("font index: {}",font_index);
-                println!("file path: {:?}",&path);
+            Handle::Path { path, font_index } => {
+                println!("font index: {}", font_index);
+                println!("file path: {:?}", &path);
             }
         }
         Ok(())
-    }   
+    }
 }
 
 impl Default for DemoApp {
