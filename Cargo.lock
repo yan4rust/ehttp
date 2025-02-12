@@ -1145,9 +1145,11 @@ dependencies = [
  "ehttp",
  "env_logger",
  "font-kit",
+ "getrandom",
  "log",
  "sys-locale",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

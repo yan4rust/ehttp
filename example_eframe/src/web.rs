@@ -26,11 +26,21 @@ impl WebHandle {
     /// Call this once from JavaScript to start your app.
     #[wasm_bindgen]
     pub async fn start(&self, canvas_id: &str) -> Result<(), wasm_bindgen::JsValue> {
+        let document = web_sys::window()
+            .expect("No window")
+            .document()
+            .expect("No document");
+
+        let canvas = document
+            .get_element_by_id(canvas_id)
+            .expect("Failed to find the_canvas_id")
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .expect("the_canvas_id was not a HtmlCanvasElement");
         self.runner
             .start(
-                canvas_id,
+                canvas,
                 eframe::WebOptions::default(),
-                Box::new(|_cc| Box::<DemoApp>::default()),
+                Box::new(|_cc| Ok(Box::<DemoApp>::default())),
             )
             .await
     }
