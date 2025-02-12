@@ -9,13 +9,7 @@ use eframe::{
     epaint::text::{FontInsert, InsertFontFamily},
     CreationContext,
 };
-use font_kit::{
-    family_name::FamilyName,
-    font::Font,
-    handle::Handle,
-    properties::Properties,
-    source::{Source, SystemSource},
-};
+
 
 use crate::{error::BoxError, font};
 
@@ -40,7 +34,7 @@ enum Download {
 }
 
 /// prefer font full name
-const PREFER_FONT: &'static[&'static str] = &["微软雅黑 Light"];
+const PREFER_FONT: &'static [&'static str] = &["微软雅黑 Light","Droid Sans Fallback"];
 
 pub struct DemoApp {
     url: String,
@@ -48,7 +42,7 @@ pub struct DemoApp {
     request_body: String,
     streaming: bool,
     download: Arc<Mutex<Download>>,
-    locale: String,
+    // locale: String,
 }
 impl DemoApp {
     pub fn new(cc: &CreationContext) -> Result<Self, BoxError> {
@@ -56,27 +50,32 @@ impl DemoApp {
         Self::load_chinese_font_fallback(&cc.egui_ctx)?;
         Ok(ret)
     }
-    /// load chinese font as fallback,use egui default font for english
+    #[cfg(target_arch = "wasm32")]
     fn load_chinese_font_fallback(ctx: &Context) -> Result<(), BoxError> {
-        let add = font::load_chinese_font(ctx,
-            |font|{
-                PREFER_FONT.contains(&font.full_name().as_str())
+        Ok(())
+    }
+    /// load chinese font as fallback,use egui default font for english
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_chinese_font_fallback(ctx: &Context) -> Result<(), BoxError> {
+        let add = font::load_chinese_font(
+            ctx,
+            |font| PREFER_FONT.contains(&font.full_name().as_str()),
+            |ctx, font| {
+                let families = vec![
+                    InsertFontFamily {
+                        family: egui::FontFamily::Proportional,
+                        priority: egui::epaint::text::FontPriority::Lowest,
+                    },
+                    InsertFontFamily {
+                        family: egui::FontFamily::Monospace,
+                        priority: egui::epaint::text::FontPriority::Lowest,
+                    },
+                ];
+                let insert = FontInsert::new("Chinese", font, families);
+                ctx.add_font(insert);
+                Ok(true)
             },
-             |ctx, font| {
-            let families = vec![
-                InsertFontFamily {
-                    family: egui::FontFamily::Proportional,
-                    priority: egui::epaint::text::FontPriority::Lowest,
-                },
-                InsertFontFamily {
-                    family: egui::FontFamily::Monospace,
-                    priority: egui::epaint::text::FontPriority::Lowest,
-                },
-            ];
-            let insert = FontInsert::new("Chinese", font, families);
-            ctx.add_font(insert);
-            Ok(true)
-        })?;
+        )?;
         if add {
             println!("found chinese font and add as fallback");
         } else {
@@ -88,16 +87,17 @@ impl DemoApp {
 
 impl Default for DemoApp {
     fn default() -> Self {
-        let locale = sys_locale::get_locale()
-            .or_else(|| Some("en-US".to_string()))
-            .unwrap();
+        // let locale = sys_locale::get_locale()
+        //     .or_else(|| Some("en-US".to_string()))
+        //     .unwrap();
+
         Self {
             url: "https://raw.githubusercontent.com/emilk/ehttp/master/README.md".to_owned(),
             method: Method::Get,
             request_body: r#"["posting some json"]"#.to_owned(),
             streaming: true,
             download: Arc::new(Mutex::new(Download::None)),
-            locale,
+            // locale,
         }
     }
 }
@@ -254,7 +254,7 @@ impl DemoApp {
         let mut trigger_fetch = false;
 
         ui.horizontal(|ui| {
-            ui.label("Examples:");
+            ui.label("Examples(中文样例):");
 
             let self_url = format!(
                 "https://raw.githubusercontent.com/emilk/ehttp/master/{}",

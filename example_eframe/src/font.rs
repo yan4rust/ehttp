@@ -1,21 +1,24 @@
 use std::sync::Arc;
 
 use eframe::egui::{Context, FontData, FontDefinitions, FontFamily};
+
+#[cfg(not(target_arch = "wasm32"))]
 use font_kit::{font::Font, source::SystemSource};
 
 use crate::error::BoxError;
 
-/// chinese hei font as fallback 
-const FONT_HEI: &'static [u8; 1894471] = include_bytes!("../fonts/chinese_hei.ttf");
+/// chinese hei font as fallback
+const FONT_HEI: &'static [u8] = include_bytes!("../fonts/chinese_hei.ttf");
 
 // chinese char '中'
 const CN_C1: char = '\u{4E2D}';
 
 /// search system fonts support chinese,and call the reg closure
 /// Ok(true): found and loaded,Ok(false): not found
-pub fn load_chinese_font<F,REG>(ctx: &Context, filter: F, reg: REG) -> Result<bool, BoxError>
+#[cfg(not(target_arch = "wasm32"))]
+pub fn load_chinese_font<F, REG>(ctx: &Context, filter: F, reg: REG) -> Result<bool, BoxError>
 where
-    F: Fn(&Font)->bool,
+    F: Fn(&Font) -> bool,
     REG: Fn(&Context, FontData) -> Result<bool, BoxError>,
 {
     let mut handles = Vec::with_capacity(16);
@@ -24,7 +27,11 @@ where
         let font = h.load().unwrap();
         let idx = font.glyph_for_char(CN_C1);
         if idx.is_some() {
-            println!("Family Name: {}, Full Name: {}",font.family_name(),font.full_name());
+            println!(
+                "Family Name: {}, Full Name: {}",
+                font.family_name(),
+                font.full_name()
+            );
             if filter(&font) {
                 handles.push(h);
             }
@@ -42,16 +49,21 @@ where
 }
 
 /// overwrite egui default font
-fn overwrite_font(ctx: &Context,font: FontData,name: &str)->Result<(), BoxError> {
+fn overwrite_font(ctx: &Context, font: FontData, name: &str) -> Result<(), BoxError> {
     let mut fonts = FontDefinitions::default();
 
-    fonts.font_data.insert(name.to_owned(),
-    Arc::new(font));
+    fonts.font_data.insert(name.to_owned(), Arc::new(font));
 
-    fonts.families.get_mut(&FontFamily::Proportional).unwrap()
+    fonts
+        .families
+        .get_mut(&FontFamily::Proportional)
+        .unwrap()
         .push(name.to_owned());
 
-    fonts.families.get_mut(&FontFamily::Monospace).unwrap()
+    fonts
+        .families
+        .get_mut(&FontFamily::Monospace)
+        .unwrap()
         .push(name.to_owned());
 
     // ctx.add_font(new_font);
