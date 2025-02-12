@@ -5,14 +5,21 @@ use std::{
 };
 
 use eframe::{
-    egui::{self, Context},
+    egui::{self, vec2, Context, TextBuffer},
+    epaint::text::{FontInsert, InsertFontFamily},
     CreationContext,
 };
 use font_kit::{
-    family_name::FamilyName, handle::Handle, properties::Properties, source::{Source, SystemSource},
+    family_name::FamilyName,
+    font::Font,
+    handle::Handle,
+    properties::Properties,
+    source::{Source, SystemSource},
 };
 
-pub type AppError = Box<dyn Error + Send + Sync>;
+use crate::{error::BoxError, font};
+
+// pub type AppError = Box<dyn Error + Send + Sync>;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -32,6 +39,9 @@ enum Download {
     Done(ehttp::Result<ehttp::Response>),
 }
 
+/// prefer font full name
+const PREFER_FONT: &'static[&'static str] = &["微软雅黑 Light"];
+
 pub struct DemoApp {
     url: String,
     method: Method,
@@ -41,36 +51,36 @@ pub struct DemoApp {
     locale: String,
 }
 impl DemoApp {
-    pub fn new(cc: &CreationContext) -> Result<Self, AppError> {
+    pub fn new(cc: &CreationContext) -> Result<Self, BoxError> {
         let ret = Self::default();
-        Self::load_font(&cc.egui_ctx)?;
+        Self::load_chinese_font_fallback(&cc.egui_ctx)?;
         Ok(ret)
     }
-    fn load_font(ctx: &Context) -> Result<(), AppError> {
-        let src = SystemSource::new();
-        // show all system font name
-        // Arial
-        // Bahnschrift
-        // Calibri
-        // Cambria
-        // 微软雅黑
-        // Microsoft YaHei UI
-        for ref name in src.all_families()? {
-            println!("{}",name);
-        }
-
-        let font = src
-            .select_best_match(&[FamilyName::SansSerif], &Properties::new())
-            .unwrap();
-        match font {
-            Handle::Memory { bytes, font_index } => {
-                println!("font index: {}", font_index);
-                println!("memory");
-            }
-            Handle::Path { path, font_index } => {
-                println!("font index: {}", font_index);
-                println!("file path: {:?}", &path);
-            }
+    /// load chinese font as fallback,use egui default font for english
+    fn load_chinese_font_fallback(ctx: &Context) -> Result<(), BoxError> {
+        let add = font::load_chinese_font(ctx,
+            |font|{
+                PREFER_FONT.contains(&font.full_name().as_str())
+            },
+             |ctx, font| {
+            let families = vec![
+                InsertFontFamily {
+                    family: egui::FontFamily::Proportional,
+                    priority: egui::epaint::text::FontPriority::Lowest,
+                },
+                InsertFontFamily {
+                    family: egui::FontFamily::Monospace,
+                    priority: egui::epaint::text::FontPriority::Lowest,
+                },
+            ];
+            let insert = FontInsert::new("Chinese", font, families);
+            ctx.add_font(insert);
+            Ok(true)
+        })?;
+        if add {
+            println!("found chinese font and add as fallback");
+        } else {
+            println!("no chinese font found");
         }
         Ok(())
     }
